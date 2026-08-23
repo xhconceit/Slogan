@@ -1,37 +1,74 @@
 package com.orange.slogan.screencontrolpoc
 
 import android.app.AppOpsManager
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Process
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.orange.slogan.screencontrolpoc.ui.theme.ScreenControlPOCTheme
 
 class MainActivity : ComponentActivity() {
+    private var hasUsageAccess by mutableStateOf(false)
+    private var foregroundPackage by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ScreenControlPOCTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        Text(
+                            text = "Android Screen Control POC",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        Text(
+                            if (hasUsageAccess) {
+                                "使用情况权限：已授权"
+                            } else {
+                                "使用情况权限：未授权"
+                            },
+                        )
+                        Text("最近前台 App：${foregroundPackage ?: "暂未检测到"}")
+                        Button(onClick = ::openUsageAccessSettings) {
+                            Text("打开使用情况访问权限")
+                        }
+                        Button(onClick = ::refreshUsageState) {
+                            Text("重新检测")
+                        }
+                    }
                 }
             }
         }
     }
 
+    // 是否权限
     private fun hasUsageStatsPermission(): Boolean {
         // 向 android 获取某一种系统权限
         val  appOps = getSystemService(
@@ -44,24 +81,53 @@ class MainActivity : ComponentActivity() {
             Process.myUid(), // 当前应用的 UID
             packageName // 当前应用的包名
         )
-
+        // 权限情况。
+        return mode == AppOpsManager.MODE_ALLOWED
     }
 
+    private fun openUsageAccessSettings() {
+        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+    }
 
-}
+    private fun getForegroundPackageName(): String? {
+        if (!hasUsageStatsPermission()) {
+            return null
+        }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+        val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ScreenControlPOCTheme {
-        Greeting("Android")
+        val endTime = System.currentTimeMillis()
+        val startTime = endTime - 10_000
+
+        val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
+        val event = UsageEvents.Event()
+        var foregroundPackage: String? = null
+
+        while (usageEvents.hasNextEvent()){
+            usageEvents.getNextEvent(event)
+
+            val isForegroundEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                event.eventType == UsageEvents.Event.ACTIVITY_RESUMED
+            } else {
+                @Suppress("DEPRECATION")
+                event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+            }
+
+            if (isForegroundEvent) {
+                foregroundPackage = event.packageName
+            }
+        }
+
+        return foregroundPackage
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshUsageState()
+    }
+
+    private fun refreshUsageState() {
+        hasUsageAccess = hasUsageStatsPermission()
+        foregroundPackage = getForegroundPackageName()
     }
 }
