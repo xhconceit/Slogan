@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Process
 import android.provider.Settings
+import android.net.Uri
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,14 +28,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.orange.slogan.screencontrolpoc.ui.theme.ScreenControlPOCTheme
-
+import android.Manifest
+import android.content.pm.PackageManager
 class MainActivity : ComponentActivity() {
     private var hasUsageAccess by mutableStateOf(false)
     private var foregroundPackage by mutableStateOf<String?>(null)
+    private var canDrawOverlays by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                100
+            )
+        }
+
+        val keepAliveIntent =
+            Intent(this, KeepAliveService::class.java)
+
+        startForegroundService(keepAliveIntent)
+
         enableEdgeToEdge()
+
         setContent {
             ScreenControlPOCTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -56,12 +78,24 @@ class MainActivity : ComponentActivity() {
                             },
                         )
                         Text("最近前台 App：${foregroundPackage ?: "暂未检测到"}")
+                        Text(
+                            if (canDrawOverlays) {
+                                "悬浮窗权限：已授权（小圆点应显示）"
+                            } else {
+                                "悬浮窗权限：未授权"
+                            },
+                        )
+                        Button(onClick = ::openOverlaySettings) {
+                            Text("打开悬浮窗权限")
+                        }
                         Button(onClick = ::openUsageAccessSettings) {
                             Text("打开使用情况访问权限")
                         }
                         Button(onClick = ::refreshUsageState) {
                             Text("重新检测")
                         }
+
+                        Text("当前验证模式：UsageStats + 悬浮窗（不使用无障碍）")
                     }
                 }
             }
@@ -89,6 +123,14 @@ class MainActivity : ComponentActivity() {
         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
     }
 
+    private fun openOverlaySettings() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName"),
+        )
+        startActivity(intent)
+    }
+
     private fun getForegroundPackageName(): String? {
         if (!hasUsageStatsPermission()) {
             return null
@@ -101,7 +143,7 @@ class MainActivity : ComponentActivity() {
 
         val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
         val event = UsageEvents.Event()
-        var foregroundPackage: String? = null
+        var latestPackage: String? = null
 
         while (usageEvents.hasNextEvent()){
             usageEvents.getNextEvent(event)
@@ -112,13 +154,12 @@ class MainActivity : ComponentActivity() {
                 @Suppress("DEPRECATION")
                 event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
             }
-
-            if (isForegroundEvent) {
-                foregroundPackage = event.packageName
+            if (isForegroundEvent && event.packageName != packageName) {
+                latestPackage = event.packageName
             }
         }
 
-        return foregroundPackage
+        return latestPackage
     }
 
     override fun onResume() {
@@ -128,6 +169,7 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshUsageState() {
         hasUsageAccess = hasUsageStatsPermission()
+        canDrawOverlays = Settings.canDrawOverlays(this)
         foregroundPackage = getForegroundPackageName()
     }
 }
