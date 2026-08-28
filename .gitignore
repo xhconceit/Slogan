@@ -28,3 +28,8 @@ DerivedData/
 
 # === 日志 ===
 *.log
+
+
+.dart_tool/
+.fvm/
+build/
