@@ -55,8 +55,27 @@ class ZaiwanColors extends ThemeExtension<ZaiwanColors> {
   /// 在两个主题之间切换时计算过渡颜色
   @override
   ZaiwanColors lerp(
-    covariant ZaiwanColors? outer
+   covariant ZaiwanColors? other,
+    double t,
   ) {
+    if (other == null) {
+      return this;
+    }
 
+     return ZaiwanColors(
+      reward: Color.lerp(reward, other.reward, t)!,
+      flashcardQuestion: Color.lerp(
+        flashcardQuestion,
+        other.flashcardQuestion,
+        t,
+      )!,
+      flashcardAnswer: Color.lerp(
+        flashcardAnswer,
+        other.flashcardAnswer,
+        t,
+      )!,
+      locked: Color.lerp(locked, other.locked, t)!,
+      unlocked: Color.lerp(unlocked, other.unlocked, t)!,
+    );
   }
 }
