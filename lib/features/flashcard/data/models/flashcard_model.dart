@@ -18,11 +18,6 @@ class FlashcardModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'question': question,
-      'answer': answer,
-    };
+    return {'id': id, 'question': question, 'answer': answer};
   }
-
 }

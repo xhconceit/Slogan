@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
+
 import '../../domain/entities/flashcard.dart';
 import '../../domain/usecases/get_flashcards.dart';
-
 
 final class FlashcardController extends ChangeNotifier {
   FlashcardController(this.getFlashcards);
@@ -30,5 +30,4 @@ final class FlashcardController extends ChangeNotifier {
       notifyListeners();
     }
   }
-
 }
