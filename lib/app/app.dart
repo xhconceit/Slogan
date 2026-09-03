@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../features/flashcard/presentation/pages/flashcard_page.dart';
 import 'dependency_injection.dart';
+import '../core/presentation/theme/app_theme.dart';
+
 
 class ZaiwanApp extends StatelessWidget {
   const ZaiwanApp({required this.dependencies, super.key});
@@ -13,10 +15,7 @@ class ZaiwanApp extends StatelessWidget {
     return MaterialApp(
       title: 'Zaiwan',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F64C5)),
-        scaffoldBackgroundColor: const Color(0xFFF8F6F1),
-      ),
+        theme: AppTheme.light,
       home: FlashcardPage(controller: dependencies.flashcardController),
     );
   }
