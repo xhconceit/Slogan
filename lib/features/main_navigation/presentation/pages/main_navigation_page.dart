@@ -4,8 +4,8 @@ import "../../../flashcard/presentation/controllers/flashcard_controller.dart";
 import "../../../flashcard/presentation/pages/flashcard_page.dart";
 import "../../../home/presentation/pages/home_page.dart";
 import "../controllers/main_navigation_controller.dart";
-import "../widgets/apple_bottom_navigation_bar.dart";
-
+import '../models/main_navigation_item.dart';
+import "../widgets/liquid_glass_tab_bar.dart";
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({
@@ -30,9 +30,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
     _pages = [
       const HomePage(),
-      FlashcardPage(
-        controller: widget.flashcardController,
-      ),
+      FlashcardPage(controller: widget.flashcardController),
       const ProfilePage(),
     ];
 
@@ -52,11 +50,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // 让页面内容延伸到导航栏下面，
+      // BackdropFilter 才能模糊页面内容。
+      extendBody: true,
       body: IndexedStack(
         index: widget.controller.selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: AppleBottomNavigationBar(
+      bottomNavigationBar: LiquidGlassTabBar(
+        items: mainNavigationItems,
         currentIndex: widget.controller.selectedIndex,
         onTap: widget.controller.selectIndex,
       ),
@@ -64,19 +66,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 }
 
-
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('我的'),
-      ),
-      body: const Center(
-        child: Text('个人中心'),
-      ),
+      appBar: AppBar(title: const Text('我的')),
+      body: const Center(child: Text('个人中心')),
     );
   }
 }
+
