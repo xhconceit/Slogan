@@ -22,6 +22,10 @@ Flutter App
 │
 ├── Task System
 │
+├── Knowledge Card System
+│
+├── Review System
+│
 ├── Unlock Rule System
 │
 ├── Screen Control Interface
@@ -96,6 +100,16 @@ Unlocked
 
 `subsystems/screen-control.md`
 
+### 3.4 Knowledge Card System
+
+负责知识库、通用知识卡片、练习判定和复习记录。支持问答、选择、录音回答、单词跟读和听力等练习方式。
+
+卡片复习记录可以作为学习任务的进度输入，但该系统不直接计算解锁状态或调用平台控制能力。
+
+详细设计见：
+
+`subsystems/knowledge-card.md`
+
 
 ## 4. 核心数据流
 
@@ -147,6 +161,9 @@ Screen Control System
 - 本地数据
 - API 通信
 - 设置
+- 知识库与卡片
+- 练习判定与复习调度
+- 学习任务进度汇总
 
 ### Native Platform
 
@@ -165,6 +182,8 @@ Android：
 - 前台 App 识别
 - App 限制相关能力
 - 系统权限
+
+两个平台还分别提供录音、音频播放、语音识别和文字转语音等平台能力，不假设具体接口和离线能力完全一致。
 
 Flutter 不直接实现系统级 App 控制。
 

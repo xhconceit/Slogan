@@ -19,6 +19,8 @@
 - [任务系统](docs/subsystems/task.md)
 - [解锁规则](docs/subsystems/unlock-rule.md)
 - [App 控制系统](docs/subsystems/screen-control.md)
+- [知识卡片系统](docs/subsystems/knowledge-card.md)
+- [卡片与复习用户流程](docs/user/cards.md)
 
 ### 平台
 
