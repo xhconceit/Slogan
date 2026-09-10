@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaiwan/features/knowledge_card/domain/entities/card_type.dart';
+import 'package:zaiwan/features/knowledge_card/domain/entities/choice_card_config.dart';
+import 'package:zaiwan/features/knowledge_card/domain/entities/choice_option.dart';
 import 'package:zaiwan/features/knowledge_card/domain/entities/knowledge_card.dart';
 import 'package:zaiwan/features/knowledge_card/domain/entities/knowledge_deck.dart';
+import 'package:zaiwan/features/knowledge_card/domain/entities/question_answer_card_config.dart';
 
 /// 验证知识库和通用知识卡片可以保存学习内容。
 void main() {
@@ -27,9 +30,8 @@ void main() {
     final card = KnowledgeCard(
       id: 'card-001',
       deckId: 'deck-001',
-      type: CardType.questionAnswer,
       prompt: 'Flutter 使用什么语言？',
-      answer: 'Dart',
+      config: const QuestionAnswerCardConfig(answer: 'Dart'),
       explanation: 'Flutter 框架和应用代码主要使用 Dart。',
       tags: const ['Flutter', '基础'],
       createdAt: now,
@@ -39,7 +41,48 @@ void main() {
     expect(card.deckId, 'deck-001');
     expect(card.type, CardType.questionAnswer);
     expect(card.prompt, 'Flutter 使用什么语言？');
-    expect(card.answer, 'Dart');
+    final config = card.config as QuestionAnswerCardConfig;
+    expect(config.answer, 'Dart');
     expect(card.tags, ['Flutter', '基础']);
+  });
+
+  test('卡片类型由专属配置决定', () {
+    final now = DateTime(2026, 9, 10);
+    final card = KnowledgeCard(
+      id: 'card-002',
+      deckId: 'deck-001',
+      prompt: 'Flutter 使用什么语言？',
+      config: ChoiceCardConfig(
+        type: CardType.singleChoice,
+        options: const [
+          ChoiceOption(id: 'a', content: 'Kotlin'),
+          ChoiceOption(id: 'b', content: 'Dart'),
+        ],
+        correctOptionIds: const {'b'},
+      ),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    expect(card.type, CardType.singleChoice);
+  });
+
+  test('卡片会复制并保护标签列表', () {
+    final now = DateTime(2026, 9, 10);
+    final originalTags = <String>['Flutter'];
+    final card = KnowledgeCard(
+      id: 'card-003',
+      deckId: 'deck-001',
+      prompt: '什么是 Widget？',
+      config: const QuestionAnswerCardConfig(answer: 'UI 的不可变描述。'),
+      tags: originalTags,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    originalTags.add('已在外部修改');
+
+    expect(card.tags, ['Flutter']);
+    expect(() => card.tags.add('新标签'), throwsUnsupportedError);
   });
 }
