@@ -9,6 +9,7 @@ import '../features/knowledge_card/domain/usecases/save_knowledge_deck.dart';
 import '../features/knowledge_card/presentation/controllers/create_knowledge_deck_controller.dart';
 import '../features/knowledge_card/presentation/controllers/knowledge_deck_controller.dart';
 import '../features/main_navigation/presentation/controllers/main_navigation_controller.dart';
+import '../features/knowledge_card/data/datasources/knowledge_deck_data_source.dart';
 
 /// 集中创建、保存和释放应用依赖。
 final class AppDependencies {
@@ -39,7 +40,9 @@ final class AppDependencies {
   final KnowledgeDeckController knowledgeDeckController;
 
   /// 按照依赖顺序创建对象。
-  factory AppDependencies.create() {
+  factory AppDependencies.create({
+    KnowledgeDeckDataSource? knowledgeDeckDataSource,
+  }) {
     // 1. 翻卡功能：数据源 → 仓库 → 用例 → 控制器。
     final flashcardDataSource = MemoryFlashcardDataSource();
 
@@ -53,10 +56,11 @@ final class AppDependencies {
     final mainNavigationController = MainNavigationController();
 
     // 3. 知识库功能：数据源 → 仓库 → 用例 → 控制器。
-    final knowledgeDeckDataSource = MemoryKnowledgeDeckDataSource();
-
+    /// 未传入持久化数据源时继续使用内存实现，方便测试和渐进性迁移
+    final resolvedKnowledgeDeckDataSource =
+        knowledgeDeckDataSource ?? MemoryKnowledgeDeckDataSource();
     final knowledgeDeckRepository = KnowledgeDeckRepositoryImpl(
-      knowledgeDeckDataSource,
+      resolvedKnowledgeDeckDataSource,
     );
 
     final saveKnowledgeDeck = SaveKnowledgeDeck(knowledgeDeckRepository);

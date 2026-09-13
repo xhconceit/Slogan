@@ -33,3 +33,6 @@ DerivedData/
 .dart_tool/
 .fvm/
 build/
+
+.flutter-plugins
+.flutter-plugins-dependencies
