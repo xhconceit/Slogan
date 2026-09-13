@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../controllers/create_knowledge_deck_controller.dart';
 import '../controllers/knowledge_deck_controller.dart';
 
 /// 知识库列表页面
 ///
 /// 控制器由外部传入，页面负责展示状态和触发加载
 class KnowledgeDeckPage extends StatefulWidget {
-  const KnowledgeDeckPage({required this.controller, super.key});
+  const KnowledgeDeckPage({
+    required this.controller,
+    required this.createController,
+    super.key,
+  });
 
   final KnowledgeDeckController controller;
+  final CreateKnowledgeDeckController createController;
   @override
   State<KnowledgeDeckPage> createState() => _KnowledgeDeckPageState();
 }
@@ -58,9 +64,33 @@ class _KnowledgeDeckPageState extends State<KnowledgeDeckPage> {
             ],
           ),
           body: _buildBody(context),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () {
+              _showCreateDeckDialog(context);
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('新建知识库'),
+          ),
         );
       },
     );
+  }
+
+  Future<void> _showCreateDeckDialog(BuildContext context) async {
+    final deckId = 'deck-${DateTime.now().microsecondsSinceEpoch}';
+    final created =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => _CreateKnowledgeDeckDialog(
+            controller: widget.createController,
+            deckId: deckId,
+          ),
+        ) ??
+        false;
+
+    if (created && mounted) {
+      await widget.controller.loadDecks();
+    }
   }
 
   /// 根据控制器状态选择要显示的内容
@@ -171,4 +201,112 @@ class _KnowledgeDeckPageState extends State<KnowledgeDeckPage> {
   // 不在这里 dispose 控制器：
   // 它由外部传入，生命周期应由拥有它的对象管理。
   // ListenableBuilder 会自动移除自己的监听。
+}
+
+class _CreateKnowledgeDeckDialog extends StatefulWidget {
+  const _CreateKnowledgeDeckDialog({
+    required this.controller,
+    required this.deckId,
+  });
+
+  final CreateKnowledgeDeckController controller;
+  final String deckId;
+
+  @override
+  State<_CreateKnowledgeDeckDialog> createState() =>
+      _CreateKnowledgeDeckDialogState();
+}
+
+class _CreateKnowledgeDeckDialogState
+    extends State<_CreateKnowledgeDeckDialog> {
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createDeck() async {
+    final success = await widget.controller.createDeck(
+      id: widget.deckId,
+      name: _nameController.text,
+      description: _descriptionController.text,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    final message = widget.controller.error is ArgumentError
+        ? '请输入知识库名称'
+        : '创建知识库失败，请重试';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.controller,
+      builder: (context, child) {
+        final isSaving = widget.controller.isSaving;
+        return AlertDialog(
+          title: const Text('新建知识库'),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  enabled: !isSaving,
+                  controller: _nameController,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: '名称',
+                    hintText: '例如：Flutter',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  enabled: !isSaving,
+                  controller: _descriptionController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: '描述（可选）',
+                    hintText: '这个知识库主要学习什么？',
+                    alignLabelWithHint: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving
+                  ? null
+                  : () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: isSaving ? null : _createDeck,
+              child: isSaving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('创建'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }

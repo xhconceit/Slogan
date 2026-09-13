@@ -5,6 +5,8 @@ import '../features/flashcard/presentation/controllers/flashcard_controller.dart
 import '../features/knowledge_card/data/datasources/memory_knowledge_deck_data_source.dart';
 import '../features/knowledge_card/data/repositories/knowledge_deck_repository_impl.dart';
 import '../features/knowledge_card/domain/usecases/get_knowledge_decks.dart';
+import '../features/knowledge_card/domain/usecases/save_knowledge_deck.dart';
+import '../features/knowledge_card/presentation/controllers/create_knowledge_deck_controller.dart';
 import '../features/knowledge_card/presentation/controllers/knowledge_deck_controller.dart';
 import '../features/main_navigation/presentation/controllers/main_navigation_controller.dart';
 
@@ -15,6 +17,7 @@ final class AppDependencies {
     required this.mainNavigationController,
     required this.getKnowledgeDecks,
     required this.knowledgeDeckController,
+    required this.createKnowledgeDeckController,
   });
 
   /// 管理翻卡页面状态。
@@ -25,6 +28,9 @@ final class AppDependencies {
 
   /// 提供获取知识库列表的业务能力。
   final GetKnowledgeDecks getKnowledgeDecks;
+
+  /// 管理新建知识库表单的保存状态
+  final CreateKnowledgeDeckController createKnowledgeDeckController;
 
   /// 管理知识库列表、加载状态和错误状态。
   ///
@@ -53,6 +59,11 @@ final class AppDependencies {
       knowledgeDeckDataSource,
     );
 
+    final saveKnowledgeDeck = SaveKnowledgeDeck(knowledgeDeckRepository);
+    final createKnowledgeDeckController = CreateKnowledgeDeckController(
+      saveKnowledgeDeck,
+    );
+
     final getKnowledgeDecks = GetKnowledgeDecks(knowledgeDeckRepository);
 
     // 左边是变量名，右边是调用类的构造函数。
@@ -64,6 +75,7 @@ final class AppDependencies {
       mainNavigationController: mainNavigationController,
       getKnowledgeDecks: getKnowledgeDecks,
       knowledgeDeckController: knowledgeDeckController,
+      createKnowledgeDeckController: createKnowledgeDeckController,
     );
   }
 
@@ -75,5 +87,6 @@ final class AppDependencies {
     flashcardController.dispose();
     mainNavigationController.dispose();
     knowledgeDeckController.dispose();
+    createKnowledgeDeckController.dispose();
   }
 }

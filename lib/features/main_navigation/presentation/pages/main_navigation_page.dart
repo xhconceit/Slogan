@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 
 import '../../../home/presentation/pages/home_page.dart';
+import '../../../knowledge_card/presentation/controllers/create_knowledge_deck_controller.dart';
 import '../../../knowledge_card/presentation/controllers/knowledge_deck_controller.dart';
 import '../../../knowledge_card/presentation/pages/knowledge_deck_page.dart';
 import '../controllers/main_navigation_controller.dart';
@@ -15,11 +16,13 @@ class MainNavigationPage extends StatelessWidget {
   const MainNavigationPage({
     required this.controller,
     required this.knowledgeDeckController,
+    required this.createKnowledgeDeckController,
     super.key,
   });
 
   final MainNavigationController controller;
   final KnowledgeDeckController knowledgeDeckController;
+  final CreateKnowledgeDeckController createKnowledgeDeckController;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +39,10 @@ class MainNavigationPage extends StatelessWidget {
             index: controller.selectedIndex,
             children: [
               const HomePage(),
-              KnowledgeDeckPage(controller: knowledgeDeckController),
+              KnowledgeDeckPage(
+                controller: knowledgeDeckController,
+                createController: createKnowledgeDeckController,
+              ),
               const ProfilePage(),
             ],
           ),
