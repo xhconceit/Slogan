@@ -3,11 +3,15 @@ import '../features/flashcard/data/repositories/flashcard_repository_impl.dart';
 import '../features/flashcard/domain/usecases/get_flashcards.dart';
 import '../features/flashcard/presentation/controllers/flashcard_controller.dart';
 import '../features/knowledge_card/data/datasources/memory_knowledge_deck_data_source.dart';
+import '../features/knowledge_card/data/datasources/memory_knowledge_card_data_source.dart';
+import '../features/knowledge_card/data/repositories/knowledge_card_repository_impl.dart';
 import '../features/knowledge_card/data/repositories/knowledge_deck_repository_impl.dart';
+import '../features/knowledge_card/domain/usecases/delete_knowledge_deck.dart';
 import '../features/knowledge_card/domain/usecases/get_knowledge_decks.dart';
 import '../features/knowledge_card/domain/usecases/save_knowledge_deck.dart';
 import '../features/knowledge_card/presentation/controllers/create_knowledge_deck_controller.dart';
 import '../features/knowledge_card/presentation/controllers/knowledge_deck_controller.dart';
+import '../features/knowledge_card/presentation/controllers/manage_knowledge_deck_controller.dart';
 import '../features/main_navigation/presentation/controllers/main_navigation_controller.dart';
 import '../features/knowledge_card/data/datasources/knowledge_deck_data_source.dart';
 
@@ -19,6 +23,7 @@ final class AppDependencies {
     required this.getKnowledgeDecks,
     required this.knowledgeDeckController,
     required this.createKnowledgeDeckController,
+    required this.manageKnowledgeDeckController,
   });
 
   /// 管理翻卡页面状态。
@@ -32,6 +37,7 @@ final class AppDependencies {
 
   /// 管理新建知识库表单的保存状态
   final CreateKnowledgeDeckController createKnowledgeDeckController;
+  final ManageKnowledgeDeckController manageKnowledgeDeckController;
 
   /// 管理知识库列表、加载状态和错误状态。
   ///
@@ -70,6 +76,17 @@ final class AppDependencies {
 
     final getKnowledgeDecks = GetKnowledgeDecks(knowledgeDeckRepository);
 
+    final knowledgeCardRepository = KnowledgeCardRepositoryImpl(
+      MemoryKnowledgeCardDataSource(),
+    );
+    final manageKnowledgeDeckController = ManageKnowledgeDeckController(
+      saveKnowledgeDeck: saveKnowledgeDeck,
+      deleteKnowledgeDeck: DeleteKnowledgeDeck(
+        deckRepository: knowledgeDeckRepository,
+        cardRepository: knowledgeCardRepository,
+      ),
+    );
+
     // 左边是变量名，右边是调用类的构造函数。
     final knowledgeDeckController = KnowledgeDeckController(getKnowledgeDecks);
 
@@ -80,6 +97,7 @@ final class AppDependencies {
       getKnowledgeDecks: getKnowledgeDecks,
       knowledgeDeckController: knowledgeDeckController,
       createKnowledgeDeckController: createKnowledgeDeckController,
+      manageKnowledgeDeckController: manageKnowledgeDeckController,
     );
   }
 
@@ -92,5 +110,6 @@ final class AppDependencies {
     mainNavigationController.dispose();
     knowledgeDeckController.dispose();
     createKnowledgeDeckController.dispose();
+    manageKnowledgeDeckController.dispose();
   }
 }

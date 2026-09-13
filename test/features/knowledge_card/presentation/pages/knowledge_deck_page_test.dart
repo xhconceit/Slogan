@@ -3,11 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zaiwan/features/knowledge_card/domain/entities/knowledge_deck.dart';
+import 'package:zaiwan/features/knowledge_card/data/datasources/memory_knowledge_card_data_source.dart';
+import 'package:zaiwan/features/knowledge_card/data/repositories/knowledge_card_repository_impl.dart';
 import 'package:zaiwan/features/knowledge_card/domain/repositories/knowledge_deck_repository.dart';
+import 'package:zaiwan/features/knowledge_card/domain/usecases/delete_knowledge_deck.dart';
 import 'package:zaiwan/features/knowledge_card/domain/usecases/get_knowledge_decks.dart';
 import 'package:zaiwan/features/knowledge_card/domain/usecases/save_knowledge_deck.dart';
 import 'package:zaiwan/features/knowledge_card/presentation/controllers/create_knowledge_deck_controller.dart';
 import 'package:zaiwan/features/knowledge_card/presentation/controllers/knowledge_deck_controller.dart';
+import 'package:zaiwan/features/knowledge_card/presentation/controllers/manage_knowledge_deck_controller.dart';
 import 'package:zaiwan/features/knowledge_card/presentation/pages/knowledge_deck_page.dart';
 
 /// 测试专用仓库。
@@ -46,12 +50,14 @@ class FakeKnowledgeDeckRepository implements KnowledgeDeckRepository {
       return;
     }
 
+    savedDecks.removeWhere((savedDeck) => savedDeck.id == deck.id);
     savedDecks.add(deck);
   }
 
   @override
   Future<void> deleteDeck(String id) {
-    throw UnimplementedError();
+    savedDecks.removeWhere((deck) => deck.id == id);
+    return Future.value();
   }
 }
 
@@ -59,6 +65,7 @@ void main() {
   late FakeKnowledgeDeckRepository repository;
   late KnowledgeDeckController controller;
   late CreateKnowledgeDeckController createController;
+  late ManageKnowledgeDeckController manageController;
   late KnowledgeDeck deck;
 
   setUp(() {
@@ -67,6 +74,15 @@ void main() {
     controller = KnowledgeDeckController(GetKnowledgeDecks(repository));
     createController = CreateKnowledgeDeckController(
       SaveKnowledgeDeck(repository),
+    );
+    manageController = ManageKnowledgeDeckController(
+      saveKnowledgeDeck: SaveKnowledgeDeck(repository),
+      deleteKnowledgeDeck: DeleteKnowledgeDeck(
+        deckRepository: repository,
+        cardRepository: KnowledgeCardRepositoryImpl(
+          MemoryKnowledgeCardDataSource(),
+        ),
+      ),
     );
 
     final now = DateTime(2026, 9, 12);
@@ -81,6 +97,7 @@ void main() {
     // 测试持有控制器，因此由测试负责释放。
     addTearDown(controller.dispose);
     addTearDown(createController.dispose);
+    addTearDown(manageController.dispose);
   });
 
   /// 为页面提供 Material 主题和导航等基础环境。
@@ -89,6 +106,7 @@ void main() {
       home: KnowledgeDeckPage(
         controller: controller,
         createController: createController,
+        manageController: manageController,
       ),
     );
   }
@@ -265,6 +283,55 @@ void main() {
     expect(find.text('Flutter'), findsOneWidget);
     expect(find.text('Flutter 学习卡片'), findsOneWidget);
     expect(find.text('还没有知识库'), findsNothing);
+  });
+
+  testWidgets('编辑知识库后保存并刷新列表', (tester) async {
+    repository.savedDecks.add(deck);
+    repository.onGetDecks = () async =>
+        List<KnowledgeDeck>.of(repository.savedDecks);
+
+    await tester.pumpWidget(createTestApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('管理知识库'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('编辑'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('编辑知识库'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).at(0), 'Flutter 进阶');
+    await tester.enterText(find.byType(TextField).at(1), '新的描述');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(repository.savedDecks, hasLength(1));
+    expect(repository.savedDecks.single.name, 'Flutter 进阶');
+    expect(repository.savedDecks.single.description, '新的描述');
+    expect(repository.savedDecks.single.createdAt, deck.createdAt);
+    expect(find.text('Flutter 进阶'), findsOneWidget);
+    expect(find.text('新的描述'), findsOneWidget);
+  });
+
+  testWidgets('确认后删除知识库并刷新列表', (tester) async {
+    repository.savedDecks.add(deck);
+    repository.onGetDecks = () async =>
+        List<KnowledgeDeck>.of(repository.savedDecks);
+
+    await tester.pumpWidget(createTestApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('管理知识库'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('删除'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('删除知识库'), findsOneWidget);
+    expect(find.textContaining('Flutter'), findsWidgets);
+    await tester.tap(find.widgetWithText(FilledButton, '删除'));
+    await tester.pumpAndSettle();
+
+    expect(repository.savedDecks, isEmpty);
+    expect(find.text('还没有知识库'), findsOneWidget);
   });
 
   testWidgets('首次加载失败显示错误，点击重试后展示数据', (tester) async {

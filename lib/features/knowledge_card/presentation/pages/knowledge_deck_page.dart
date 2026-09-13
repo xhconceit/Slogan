@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../controllers/create_knowledge_deck_controller.dart';
 import '../controllers/knowledge_deck_controller.dart';
+import '../controllers/manage_knowledge_deck_controller.dart';
+import '../../domain/entities/knowledge_deck.dart';
 
 /// 知识库列表页面
 ///
@@ -10,11 +12,13 @@ class KnowledgeDeckPage extends StatefulWidget {
   const KnowledgeDeckPage({
     required this.controller,
     required this.createController,
+    required this.manageController,
     super.key,
   });
 
   final KnowledgeDeckController controller;
   final CreateKnowledgeDeckController createController;
+  final ManageKnowledgeDeckController manageController;
   @override
   State<KnowledgeDeckPage> createState() => _KnowledgeDeckPageState();
 }
@@ -189,6 +193,27 @@ class _KnowledgeDeckPageState extends State<KnowledgeDeckPage> {
                     subtitle: description == null || description.trim().isEmpty
                         ? null
                         : Text(description),
+                    trailing: PopupMenuButton<_DeckAction>(
+                      tooltip: '管理知识库',
+                      onSelected: (action) {
+                        switch (action) {
+                          case _DeckAction.edit:
+                            _showEditDeckDialog(context, deck);
+                          case _DeckAction.delete:
+                            _confirmDeleteDeck(context, deck);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: _DeckAction.edit,
+                          child: Text('编辑'),
+                        ),
+                        PopupMenuItem(
+                          value: _DeckAction.delete,
+                          child: Text('删除'),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -198,9 +223,155 @@ class _KnowledgeDeckPageState extends State<KnowledgeDeckPage> {
       ],
     );
   }
+
+  Future<void> _showEditDeckDialog(
+    BuildContext context,
+    KnowledgeDeck deck,
+  ) async {
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (context) => _EditKnowledgeDeckDialog(
+        controller: widget.manageController,
+        deck: deck,
+      ),
+    );
+    if (updated == true && mounted) await widget.controller.loadDecks();
+  }
+
+  Future<void> _confirmDeleteDeck(
+    BuildContext context,
+    KnowledgeDeck deck,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('删除知识库'),
+        content: Text('确定删除“${deck.name}”及其中的全部卡片吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final success = await widget.manageController.deleteDeck(deck.id);
+    if (success && mounted) {
+      await widget.controller.loadDecks();
+    } else if (mounted) {
+      ScaffoldMessenger.of(this.context)
+          .showSnackBar(const SnackBar(content: Text('删除知识库失败，请重试')));
+    }
+  }
   // 不在这里 dispose 控制器：
   // 它由外部传入，生命周期应由拥有它的对象管理。
   // ListenableBuilder 会自动移除自己的监听。
+}
+
+enum _DeckAction { edit, delete }
+
+class _EditKnowledgeDeckDialog extends StatefulWidget {
+  const _EditKnowledgeDeckDialog({
+    required this.controller,
+    required this.deck,
+  });
+
+  final ManageKnowledgeDeckController controller;
+  final KnowledgeDeck deck;
+
+  @override
+  State<_EditKnowledgeDeckDialog> createState() =>
+      _EditKnowledgeDeckDialogState();
+}
+
+class _EditKnowledgeDeckDialogState extends State<_EditKnowledgeDeckDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.deck.name);
+    _descriptionController = TextEditingController(
+      text: widget.deck.description,
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final success = await widget.controller.updateDeck(
+      deck: widget.deck,
+      name: _nameController.text,
+      description: _descriptionController.text,
+    );
+    if (!mounted) return;
+    if (success) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    final message = widget.controller.error is ArgumentError
+        ? '请输入知识库名称'
+        : '保存知识库失败，请重试';
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.controller,
+      builder: (context, child) {
+        final isBusy = widget.controller.isBusy;
+        return AlertDialog(
+          title: const Text('编辑知识库'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _nameController,
+                enabled: !isBusy,
+                decoration: const InputDecoration(labelText: '名称'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _descriptionController,
+                enabled: !isBusy,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: '描述（可选）'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isBusy ? null : () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: isBusy ? null : _save,
+              child: isBusy
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _CreateKnowledgeDeckDialog extends StatefulWidget {
