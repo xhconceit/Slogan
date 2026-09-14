@@ -8,6 +8,7 @@ import '../../../knowledge_card/presentation/pages/knowledge_deck_page.dart';
 import '../controllers/main_navigation_controller.dart';
 import '../models/main_navigation_item.dart';
 import '../widgets/liquid_glass_tab_bar.dart';
+import '../../../knowledge_card/domain/usecases/get_knowledge_cards_by_deck_id.dart';
 
 /// 应用的三个一级页面及底部导航
 ///
@@ -19,6 +20,7 @@ class MainNavigationPage extends StatelessWidget {
     required this.knowledgeDeckController,
     required this.createKnowledgeDeckController,
     required this.manageKnowledgeDeckController,
+    required this.getKnowledgeCardsByDeckId,
     super.key,
   });
 
@@ -26,6 +28,8 @@ class MainNavigationPage extends StatelessWidget {
   final KnowledgeDeckController knowledgeDeckController;
   final CreateKnowledgeDeckController createKnowledgeDeckController;
   final ManageKnowledgeDeckController manageKnowledgeDeckController;
+  // 主导航负责把查询用例传给知识库页面
+  final GetKnowledgeCardsByDeckId getKnowledgeCardsByDeckId;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +50,7 @@ class MainNavigationPage extends StatelessWidget {
                 controller: knowledgeDeckController,
                 createController: createKnowledgeDeckController,
                 manageController: manageKnowledgeDeckController,
+                getKnowledgeCardsByDeckId: getKnowledgeCardsByDeckId,
               ),
               const ProfilePage(),
             ],

@@ -26,6 +26,7 @@ class ZaiwanApp extends StatelessWidget {
             dependencies.createKnowledgeDeckController,
         manageKnowledgeDeckController:
             dependencies.manageKnowledgeDeckController,
+        getKnowledgeCardsByDeckId: dependencies.getKnowledgeCardsByDeckId,
       ),
     );
   }

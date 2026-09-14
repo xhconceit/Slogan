@@ -14,6 +14,7 @@ import '../features/knowledge_card/presentation/controllers/knowledge_deck_contr
 import '../features/knowledge_card/presentation/controllers/manage_knowledge_deck_controller.dart';
 import '../features/main_navigation/presentation/controllers/main_navigation_controller.dart';
 import '../features/knowledge_card/data/datasources/knowledge_deck_data_source.dart';
+import '../features/knowledge_card/domain/usecases/get_knowledge_cards_by_deck_id.dart';
 
 /// 集中创建、保存和释放应用依赖。
 final class AppDependencies {
@@ -24,6 +25,7 @@ final class AppDependencies {
     required this.knowledgeDeckController,
     required this.createKnowledgeDeckController,
     required this.manageKnowledgeDeckController,
+    required this.getKnowledgeCardsByDeckId,
   });
 
   /// 管理翻卡页面状态。
@@ -34,6 +36,12 @@ final class AppDependencies {
 
   /// 提供获取知识库列表的业务能力。
   final GetKnowledgeDecks getKnowledgeDecks;
+
+  /// 提供按知识库 ID 查询卡片的能力
+  ///
+  /// 不同知识库页面可以共用这个用例
+  /// 每次查询时传入各自的 deckId
+  final GetKnowledgeCardsByDeckId getKnowledgeCardsByDeckId;
 
   /// 管理新建知识库表单的保存状态
   final CreateKnowledgeDeckController createKnowledgeDeckController;
@@ -69,6 +77,12 @@ final class AppDependencies {
       resolvedKnowledgeDeckDataSource,
     );
 
+    // 复用已有的卡片仓库。
+    // 查询卡片和删除知识库中的卡片，都操作同一份数据。
+    final getKnowledgeCardsByDeckId = GetKnowledgeCardsByDeckId(
+      knowledgeCardRepository,
+    );
+
     final saveKnowledgeDeck = SaveKnowledgeDeck(knowledgeDeckRepository);
     final createKnowledgeDeckController = CreateKnowledgeDeckController(
       saveKnowledgeDeck,
@@ -98,6 +112,7 @@ final class AppDependencies {
       knowledgeDeckController: knowledgeDeckController,
       createKnowledgeDeckController: createKnowledgeDeckController,
       manageKnowledgeDeckController: manageKnowledgeDeckController,
+      getKnowledgeCardsByDeckId: getKnowledgeCardsByDeckId,
     );
   }
 

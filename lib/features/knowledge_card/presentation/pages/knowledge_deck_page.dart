@@ -4,6 +4,9 @@ import '../controllers/create_knowledge_deck_controller.dart';
 import '../controllers/knowledge_deck_controller.dart';
 import '../controllers/manage_knowledge_deck_controller.dart';
 import '../../domain/entities/knowledge_deck.dart';
+import '../../domain/usecases/get_knowledge_cards_by_deck_id.dart';
+import '../controllers/knowledge_card_controller.dart';
+import 'knowledge_card_page.dart';
 
 /// 知识库列表页面
 ///
@@ -13,12 +16,16 @@ class KnowledgeDeckPage extends StatefulWidget {
     required this.controller,
     required this.createController,
     required this.manageController,
+    required this.getKnowledgeCardsByDeckId,
     super.key,
   });
 
   final KnowledgeDeckController controller;
   final CreateKnowledgeDeckController createController;
   final ManageKnowledgeDeckController manageController;
+
+  /// 打开知识库时，用它创建改知识库的卡片控制器
+  final GetKnowledgeCardsByDeckId getKnowledgeCardsByDeckId;
   @override
   State<KnowledgeDeckPage> createState() => _KnowledgeDeckPageState();
 }
@@ -78,6 +85,35 @@ class _KnowledgeDeckPageState extends State<KnowledgeDeckPage> {
         );
       },
     );
+  }
+
+  /// 打开指定知识库的卡片列表
+  Future<void> _openDeck(KnowledgeDeck deck) async {
+    // 每次打开页面都创建独立的控制器
+    // deckID 决定查询那个知识库，查询用例依然共用
+    final controller = KnowledgeCardController(
+      deckId: deck.id,
+      getKnowledgeCardsByDeckId: widget.getKnowledgeCardsByDeckId,
+    );
+
+    // 创建页面路由，传入标题和控制器
+    final route = MaterialPageRoute<void>(
+      builder: (context) =>
+          KnowledgeCardPage(deckName: deck.name, controller: controller),
+    );
+
+    try {
+      // 将卡片页面压入导航栈
+      // 用户返回时， 这个 Future 完成
+      await Navigator.of(context).push<void>(route);
+
+      /// 返回动画结束，路由移除后，页面才不再使用控制器
+      await route.completed;
+    } finally {
+      /// 谁创建，谁释放
+      /// 即使导航过程中出现异常，也清理控制器
+      controller.dispose();
+    }
   }
 
   Future<void> _showCreateDeckDialog(BuildContext context) async {
@@ -187,7 +223,14 @@ class _KnowledgeDeckPageState extends State<KnowledgeDeckPage> {
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
                     leading: const Icon(Icons.library_books_outlined),
+
                     title: Text(deck.name),
+
+                    // 点击知识库主体，打开对应的卡片列表。
+                    // 右侧菜单仍负责编辑和删除。
+                    onTap: () {
+                      _openDeck(deck);
+                    },
 
                     /// 没有描述时不显示副标题
                     subtitle: description == null || description.trim().isEmpty

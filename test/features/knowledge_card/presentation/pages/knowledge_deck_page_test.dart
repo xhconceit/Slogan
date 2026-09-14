@@ -8,11 +8,13 @@ import 'package:zaiwan/features/knowledge_card/data/repositories/knowledge_card_
 import 'package:zaiwan/features/knowledge_card/domain/repositories/knowledge_deck_repository.dart';
 import 'package:zaiwan/features/knowledge_card/domain/usecases/delete_knowledge_deck.dart';
 import 'package:zaiwan/features/knowledge_card/domain/usecases/get_knowledge_decks.dart';
+import 'package:zaiwan/features/knowledge_card/domain/usecases/get_knowledge_cards_by_deck_id.dart';
 import 'package:zaiwan/features/knowledge_card/domain/usecases/save_knowledge_deck.dart';
 import 'package:zaiwan/features/knowledge_card/presentation/controllers/create_knowledge_deck_controller.dart';
 import 'package:zaiwan/features/knowledge_card/presentation/controllers/knowledge_deck_controller.dart';
 import 'package:zaiwan/features/knowledge_card/presentation/controllers/manage_knowledge_deck_controller.dart';
 import 'package:zaiwan/features/knowledge_card/presentation/pages/knowledge_deck_page.dart';
+import 'package:zaiwan/features/knowledge_card/presentation/pages/knowledge_card_page.dart';
 
 /// 测试专用仓库。
 ///
@@ -67,6 +69,7 @@ void main() {
   late CreateKnowledgeDeckController createController;
   late ManageKnowledgeDeckController manageController;
   late KnowledgeDeck deck;
+  late KnowledgeCardRepositoryImpl cardRepository;
 
   setUp(() {
     // 每个测试使用独立的仓库和控制器。
@@ -75,13 +78,15 @@ void main() {
     createController = CreateKnowledgeDeckController(
       SaveKnowledgeDeck(repository),
     );
+    // 查询和删除共用同一份卡片数据，每个测试重新创建。
+    cardRepository = KnowledgeCardRepositoryImpl(
+      MemoryKnowledgeCardDataSource(),
+    );
     manageController = ManageKnowledgeDeckController(
       saveKnowledgeDeck: SaveKnowledgeDeck(repository),
       deleteKnowledgeDeck: DeleteKnowledgeDeck(
         deckRepository: repository,
-        cardRepository: KnowledgeCardRepositoryImpl(
-          MemoryKnowledgeCardDataSource(),
-        ),
+        cardRepository: cardRepository,
       ),
     );
 
@@ -107,9 +112,48 @@ void main() {
         controller: controller,
         createController: createController,
         manageController: manageController,
+        getKnowledgeCardsByDeckId: GetKnowledgeCardsByDeckId(cardRepository),
       ),
     );
   }
+
+  testWidgets('点击知识库进入卡片列表，返回后可以再次打开', (tester) async {
+    // 准备一个知识库，卡片仓库保持为空。
+    repository.onGetDecks = () async => [deck];
+    await tester.pumpWidget(createTestApp());
+    await tester.pumpAndSettle();
+
+    // 点击标题，等待页面动画和卡片查询完成。
+    await tester.tap(find.text(deck.name));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(KnowledgeCardPage), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text(deck.name),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('这个知识库还没有卡片'), findsOneWidget);
+
+    // 返回并等待退出动画，让打开页面的一方释放控制器。
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(KnowledgeCardPage), findsNothing);
+    expect(find.text('知识库'), findsOneWidget);
+
+    // 再次进入，检查没有复用已释放的控制器。
+    await tester.tap(find.text(deck.name));
+    await tester.pumpAndSettle();
+    expect(find.byType(KnowledgeCardPage), findsOneWidget);
+    expect(find.text('这个知识库还没有卡片'), findsOneWidget);
+
+    // 正常关闭第二次打开的页面，完成资源清理。
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('加载期间显示进度，并禁用刷新按钮', (tester) async {
     // 手动控制请求完成时间，以便观察加载中的界面。
