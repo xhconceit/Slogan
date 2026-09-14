@@ -15,6 +15,7 @@ import '../features/knowledge_card/presentation/controllers/manage_knowledge_dec
 import '../features/main_navigation/presentation/controllers/main_navigation_controller.dart';
 import '../features/knowledge_card/data/datasources/knowledge_deck_data_source.dart';
 import '../features/knowledge_card/domain/usecases/get_knowledge_cards_by_deck_id.dart';
+import '../features/knowledge_card/domain/usecases/save_knowledge_card.dart';
 
 /// 集中创建、保存和释放应用依赖。
 final class AppDependencies {
@@ -26,6 +27,7 @@ final class AppDependencies {
     required this.createKnowledgeDeckController,
     required this.manageKnowledgeDeckController,
     required this.getKnowledgeCardsByDeckId,
+    required this.saveKnowledgeCard,
   });
 
   /// 管理翻卡页面状态。
@@ -53,6 +55,9 @@ final class AppDependencies {
   /// knowledgeDeckController 是字段名。
   final KnowledgeDeckController knowledgeDeckController;
 
+  /// 提供创建和更新知识卡片的能力
+  final SaveKnowledgeCard saveKnowledgeCard;
+
   /// 按照依赖顺序创建对象。
   factory AppDependencies.create({
     KnowledgeDeckDataSource? knowledgeDeckDataSource,
@@ -77,12 +82,6 @@ final class AppDependencies {
       resolvedKnowledgeDeckDataSource,
     );
 
-    // 复用已有的卡片仓库。
-    // 查询卡片和删除知识库中的卡片，都操作同一份数据。
-    final getKnowledgeCardsByDeckId = GetKnowledgeCardsByDeckId(
-      knowledgeCardRepository,
-    );
-
     final saveKnowledgeDeck = SaveKnowledgeDeck(knowledgeDeckRepository);
     final createKnowledgeDeckController = CreateKnowledgeDeckController(
       saveKnowledgeDeck,
@@ -93,6 +92,15 @@ final class AppDependencies {
     final knowledgeCardRepository = KnowledgeCardRepositoryImpl(
       MemoryKnowledgeCardDataSource(),
     );
+
+    final saveKnowledgeCard = SaveKnowledgeCard(knowledgeCardRepository);
+
+    // 复用已有的卡片仓库。
+    // 查询卡片和删除知识库中的卡片，都操作同一份数据。
+    final getKnowledgeCardsByDeckId = GetKnowledgeCardsByDeckId(
+      knowledgeCardRepository,
+    );
+
     final manageKnowledgeDeckController = ManageKnowledgeDeckController(
       saveKnowledgeDeck: saveKnowledgeDeck,
       deleteKnowledgeDeck: DeleteKnowledgeDeck(
@@ -113,6 +121,7 @@ final class AppDependencies {
       createKnowledgeDeckController: createKnowledgeDeckController,
       manageKnowledgeDeckController: manageKnowledgeDeckController,
       getKnowledgeCardsByDeckId: getKnowledgeCardsByDeckId,
+      saveKnowledgeCard: saveKnowledgeCard,
     );
   }
 
